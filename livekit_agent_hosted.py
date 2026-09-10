@@ -2563,25 +2563,14 @@ async def entrypoint(
 # ============================================================================
 
 if __name__ == "__main__":
-
     cli.run_app(
         WorkerOptions(
-
             entrypoint_fnc=entrypoint,
-
-            # IMPORTANT:
-            # app.py dispatches each browser session explicitly
-            # using this same agent name.
             agent_name=os.getenv(
                 "LIVEKIT_LAPTOP_AGENT_NAME",
                 "aarna-sania-laptop-test",
             ),
-
-            # Keep one warm worker process on Render.
             num_idle_processes=1,
-
-            # Give LiveKit enough time for process initialization.
-            # FastEmbed is no longer part of this startup path.
             initialize_process_timeout=120,
         )
     )
