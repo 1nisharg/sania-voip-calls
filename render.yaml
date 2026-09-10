@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: sania-voice-demo
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python livekit_agent_hosted.py download-files
+    startCommand: sh -c 'python livekit_agent_hosted.py start & hypercorn app:app --bind 0.0.0.0:$PORT'
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.4

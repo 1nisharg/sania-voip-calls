@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aarna — Sania Voice Agent</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <style>
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; max-width:560px; margin:48px auto; padding:0 20px; color:#1a1a1a; }
+    h1 { font-size:20px; margin-bottom:4px; }
+    p.subtitle { color:#666; margin-top:0; font-size:14px; }
+    label { display:block; margin-top:16px; font-size:13px; font-weight:600; color:#333; }
+    input { width:100%; padding:8px 10px; margin-top:4px; border:1px solid #ccc; border-radius:6px; font-size:14px; box-sizing:border-box; }
+    button { margin-top:20px; padding:10px 20px; background:#1a1a1a; color:white; border:none; border-radius:6px; font-size:14px; cursor:pointer; }
+    button:disabled { background:#999; cursor:not-allowed; }
+    #status { margin-top:20px; padding:12px; border-radius:6px; background:#f5f5f5; font-size:13px; font-family:ui-monospace,monospace; white-space:pre-wrap; min-height:40px; }
+    #status.connected { background:#e6f4ea; }
+    #status.error { background:#fce8e6; }
+    #remoteAudio { display:none; }
+  </style>
+</head>
+<body>
+  <h1>Aarna — Sania Voice Agent</h1>
+  <p class="subtitle">Internal WebRTC voice-agent experiment. No phone number or Twilio required.</p>
+
+  <label for="partner">Partner / business name (optional)</label>
+  <input id="partner" type="text" placeholder="e.g. Desert Safari Dubai" />
+
+  <label for="contact">Contact name (optional)</label>
+  <input id="contact" type="text" placeholder="e.g. Ahmed" />
+
+  <label for="category">Category (optional)</label>
+  <input id="category" type="text" placeholder="e.g. Desert Safari" />
+
+  <button id="connectBtn" onclick="connect()">Connect to Sania</button>
+  <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+
+  <div id="status">Not connected.</div>
+  <div id="remoteAudio"></div>
+
+  <script>
+    let room = null;
+
+    function log(msg) {
+      const el = document.getElementById("status");
+      const ts = new Date().toLocaleTimeString();
+      el.textContent += `\n[${ts}] ${msg}`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setStatus(cls) { document.getElementById("status").className = cls; }
+
+    async function connect() {
+      const connectBtn = document.getElementById("connectBtn");
+      connectBtn.disabled = true;
+      document.getElementById("status").textContent = "";
+      log("Creating a secure call session...");
+
+      try {
+        const response = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            partner_name: document.getElementById("partner").value.trim(),
+            contact_name: document.getElementById("contact").value.trim(),
+            category: document.getElementById("category").value.trim(),
+            digitisation: "semi"
+          })
+        });
+        if (!response.ok) throw new Error(`Session creation failed (${response.status})`);
+        const { serverUrl, token } = await response.json();
+
+        room = new LivekitClient.Room();
+        room
+          .on(LivekitClient.RoomEvent.Connected, () => { setStatus("connected"); log(`Connected to room: ${room.name}`); })
+          .on(LivekitClient.RoomEvent.ParticipantConnected, p => log(`Participant joined: ${p.identity}`))
+          .on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+            if (track.kind === LivekitClient.Track.Kind.Audio) {
+              log(`Audio track from ${participant.identity} — playing`);
+              document.getElementById("remoteAudio").appendChild(track.attach());
+            }
+          })
+          .on(LivekitClient.RoomEvent.Disconnected, reason => {
+            setStatus(""); log(`Disconnected. Reason: ${reason || "unknown"}`);
+            connectBtn.disabled = false;
+            document.getElementById("disconnectBtn").disabled = true;
+          });
+
+        await room.connect(serverUrl, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        log("Microphone enabled. Waiting for Sania to speak...");
+        document.getElementById("disconnectBtn").disabled = false;
+      } catch (err) {
+        setStatus("error"); log(`Connection failed: ${err.message || err}`);
+        connectBtn.disabled = false;
+        if (room) { await room.disconnect(); room = null; }
+      }
+    }
+
+    async function disconnect() {
+      if (room) { await room.disconnect(); room = null; }
+    }
+  </script>
+</body>
+</html>
