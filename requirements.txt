@@ -1,0 +1,7 @@
+Flask[async]>=3.0,<4
+hypercorn>=0.17,<1
+python-dotenv>=1.0,<2
+livekit-api>=1.0
+livekit-agents[deepgram,openai,fishaudio,silero]~=1.0
+fastembed>=0.4
+numpy>=1.26
