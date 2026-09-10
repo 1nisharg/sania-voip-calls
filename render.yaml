@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt && python livekit_agent_hosted.py download-files
-    startCommand: sh -c 'python livekit_agent_hosted.py start & hypercorn app:app --bind 0.0.0.0:$PORT'
+    startCommand: sh -c 'hypercorn app:app --bind 0.0.0.0:$PORT & exec python livekit_agent_hosted.py start'
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
